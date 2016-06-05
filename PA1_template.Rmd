@@ -1,26 +1,280 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "COURSERA - Reproducible Research"
+author: "Bruce Granger"
+date: "June 5, 2016"
+output: html_document
 ---
 
+####### BACKGROUND: This analysis makes use of data from a personal activity monitoring device. The data is taken at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and includes the number of steps taken in 5 minute intervals each day.
 
-## Loading and preprocessing the data
-# Introduce a single change.
+####### PRIMARY OBJECTIVES: Analyze the data and determine:
+1. Load the data (i.e. read.csv())
+2. Total number of steps taken each day
+2. Mean and median number of steps taken each day
+3. Time series plot of the average number of steps taken
+4. The 5-minute interval that, on average, contains the maximum number of steps
+5. Code to describe and show a strategy for imputing missing data
+6. Histogram of the total number of steps taken each day after missing values are imputed
+7. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+####### SECONDARY OBJECTIVES:
+- Explain code blocks
+
+[Personal Activity Monitoring Dataset](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) [52K]
+
+- Steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- Date: The date on which the measurement was taken in YYYY-MM-DD format
+- Interval: Identifier for the 5-minute interval in which measurement was taken
+- The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+#### --------------------------------------------- SETUP ------------------------------------------------------------------------------
+1. In the setup block, obtaining the current working directory, which will be changed during this routine then returned to the original
+working directory.
+2. Path variables hold path information.
+3. Zip variables hold name of the Zip file and the file within the zip containing the activity monitoring dataset.
+```{r SETUP, echo=TRUE}
+ORG_WD<-getwd()
+R_Path<-("L:/Coursera/DataScience/Reproducible_Research/Reproducible-ResearchAssignmentW2")
+Raw_Data_Path<-("L:/Coursera/DataScience/Reproducible_Research")
+Zip_Name<-("repdata_data_activity.zip")
+Zip_File_Name<-("activity.csv")
+setwd(Raw_Data_Path)
+```
+
+```{r LOAD DEPENDENT LIBRIIES, echo = TRUE}
+library(dplyr)
+library(ggplot2)
+```
+
+#### --------------------------------------------- FILE READING --------------------------------------------------------------------
+
+DETERMINE IF FILE (ACTIVITY) HAS BEEN UNZIPED, IF NO THEN UNZIP ELSE DO NOTHING.
+
+```{r DOES FILE EXIST, echo=TRUE}
+
+if(file.exists(Zip_File_Name)){
+        print("FILE EXISTS, NOTHING TO DO")#CONDITION TRUE - DO NOTHING.
+}else{unzip(paste(Raw_Data_Path,"/",Zip_Name, sep = ""))     #CONDITION FALSE - UNZIP FILE  
+}
+```
+
+READ (ACTIVITY MONITORING DATASET) FILE INTO MEMORY, EXPLICITLY DEFINE COLUMN CLASS.
+
+```{r FILE READING, echo=TRUE}
+Act<- read.csv(paste(Raw_Data_Path,"/",Zip_File_Name, sep = ""), header=TRUE, sep=",",
+               colClasses=c("numeric", "character", "factor"))
+str(Act)   
+```
+
+NOTICE:
+
++ THE DATE FIELD IS DEFINE OF CHARACTER TYPE (chr), THIS WILL BE USED WHEN CONVERTED TO DATE USING as.DATE
++ BASED ON THE STARTING NUMBER OF OBSERVATIONS, ALL 17,568 OBSERVATIONS AND THREE VARIABLES (steps, date, & interval) WERE READ INTO MEMORY.
+
+#### ---------------------------------------- STEPS PER DAY -------------------------------------------------------------------------
+##### Determine the total steps taken per day:
+```{r DATA MANUPLITATION, echo=TRUE}
+# REMOVE NA VALUES FROM DATA FRAME.
+# THIS NOT NECESSAY TO DEAL WITH NAs IN THIS MANNER BECASUE IT IS  
+# POSSIBLE TO USE THE AGGERGATE FUNCTION WITH THE "na.action" ARGUMENT.
+# I AM REMOVING TO HIGHLIGHT THE STEPS IN DETAIL.
+Act_1<-na.omit(Act)
+```
+
+The total number of NA entries in the Steps field is `r sprintf("%.2f",sum(is.na(Act$steps)))` and the number of entries in the Steps field that are NOT NA is `r sprintf("%.2f",sum(!is.na(Act$steps)))`.
 
 
+``` {r CONTINE DATA MANUPLITATION, echo=TRUE }
+# CONVERTING THE DATE FIELD, WHICH IS OF OBJECT TYPE.CHARACTER, TO A DATE OBJECT CLASS.
+Act_1$date <- as.Date(Act_1$date, format = "%Y-%m-%d")
 
-## What is mean total number of steps taken per day?
+# REQUIREMENT 1: TOTAL NUMBER OF STEPS TAKEN EACH DAY.
+# GROUP (AGGREGATE) THE TOTAL (SUM) STEPS TAKEN BY DATE.
+SPD <- aggregate(steps ~ date, Act_1, sum)
+colnames(SPD) <- c("Date","Total_Steps_Per_Day")
+
+# STEPS TAKEN PER DAY
+head(SPD)
+```
+
+#### ------------------------------- PLOTTING STEPS PER DAY AND MEAN & MEDIAN ---------------------------------------------
+```{r GGPLOT LIBRARY, echo=TRUE}
+# REQUIREMENT 2: MAKE HISTOGRAM OF THE TOTAL NUMBER OF STEPS TAKEN EACH DAY. 
+ggplot(SPD, aes(x=Total_Steps_Per_Day)) + 
+        geom_histogram(binwidth=650,colour="red", fill="white") +
+        geom_vline(aes(xintercept=mean(Total_Steps_Per_Day, na.rm=T)),color="yellow", linetype="solid", size=1)+
+        geom_vline(aes(xintercept=median(Total_Steps_Per_Day, na.rm=T)),color="black", linetype="dashed", size=.5) +
+        ggtitle("Total Steps Per Day \n by Occurance") +
+        xlab("Total Steps per day") + ylab("Occurance")
+
+# REQUIREMENT 3: CALCULATE THE MEAN AND MEDIAN STEPS PER DAY.
+SPD_Mean<-mean(SPD$Total_Steps_Per_Day)
+SPD_Median<-median(SPD$Total_Steps_Per_Day)
+```
+
+The MEAN of the total steps per day is `r sprintf("%.4f",SPD_Mean)` (displayed as solid yellow vertical line on the chart) and the MEDIAN (displayed as dashed black vertical line on the chart) of the total steps per day is `r sprintf("%.2f",SPD_Median)`.
+
+#### ---------------------- AVERAGE NUMBER OF STEPS TAKEN, ACROSS ALL DAYS ------------------------------------
+```{r AVG STEPS TAKEN PER INTERVAL, echo= TRUE}
+#  BEGINNING WITH ORIGINAL DATASET, Act (Activity Monitoring Dataset), WHICH CONTAINS "NA" IN THE STEPS FIELD.
+Act_2<-Act
+
+#    COERCING THE DATE FIELD IN THE ACT_2 DATA.FRAME, WHICH IS OF OBJECT TYPE.CHARACTER(chr), TO A DATE OBJECT CLASS
+#    WITH A FORMATE OF YEAR-MONTH-DAY.
+Act_2$date <- as.Date(Act_2$date, format = "%Y-%m-%d")
+
+# TOTAL NUMBER OF STEPS TAKEN EACH DAY PER INTERVAL
+# GROUP (AGGREGATE) THE MEAN STEPS TAKEN BY INTERVAL, REMOVING THE NA VALUES (na.rm=TRUE) FROM THE DATASET.
+# INTO A DATA.FRAME CALLED MSPI (MEAN STEPS PER INTERVAL:MSPI)
+MSPI <- aggregate(Act_2$steps, by = list(interval = Act_2$interval),FUN=mean, na.rm=TRUE)
+
+str(MSPI)
+# COERCING THE INTERVAL FIELD IN THE MSPI DATA.FRAME, FROM A FACTOR INTO A INTEGER (INT) CLASS.
+MSPI$interval <-as.integer(levels(MSPI$interval)[MSPI$interval])
+str(MSPI)
+# RENAMING THE COLUMNS, AS A RESULT OF THE AGGERGATE PROCESS, TO BETTER IDENTIFY THE FIELD. 
+colnames(MSPI) <- c("Interval", "MSPI")
+
+MSPI<-arrange(MSPI,Interval)
+
+```
+
+#### ------------------ PLOTTING AVG STEPS TAKEN PER INTERVAL, AVG ACROSS ALL DAYS --------------------------
+```{r PLOT AVG STEPS TAKEN PER INTERVAL, echo= TRUE}
+# REQUIREMENT 4: TIME SERIES PLOT OF THE AVERAGE NUMBER OF STEPS TAKEN. 
+        
+ggplot(MSPI,aes(x=Interval, y=MSPI))+
+        geom_line(color="red", size=.1) +  
+        theme(panel.background = element_rect(fill = 'grey95'),
+        panel.grid.major = element_line(colour = "black", size=.1),
+        panel.grid.minor = element_line(colour = "blue")) +
+        labs(title="MEAN STEPS TAKEN PER INTERVAL", x="Time Interval (5 Sec)", y="MEAN Number of Steps")
+```
+
+#### ----- WHICH 5-MIN INTERVAL, ON AVG ACROSS ALL DAYS, IS THE MAX NUMBERS OF STEPS -----------
+
+```{r MAX MEAN STEPS PER INTERVAL, echo=TRUE}
+# REQUIREMENT 5: USING THE FILTER FUNCTION WITHIN THE DPLYR PACKAGE  
+# WITHIN THE MSPI DATA.FRAME, FIND THE MAX STEPS WITHING THE MSPI FIELD
+MaxSteps<-(filter(MSPI, MSPI == max(MSPI$MSPI)))
+```
+The average max number of steps taken was `r sprintf("%.2f",MaxSteps$MSPI)`, which was taken at the `r sprintf("%.0f",MaxSteps$Interval)` ^th^ interval (seconds).
 
 
+#### ------------------------- REPLACE THE NA's WITH THE MEDIAN VALUE   --------------------------------------------------------
+NOTICE THAT OF THE `r sprintf("%.0f", NROW(Act_2$steps))` OBSERVATIONS, `r sprintf("%.0f", sum(is.na(Act_2$steps)))` HAD "N/A", WHICH EQUATES TO NOT HAVING A VALUE IN THE STEPS VARIABLE.  THE FOLLOWING STATEGY WILL BE TAKEN WHEN REPLACING NA VALUES:
 
-## What is the average daily activity pattern?
++ INDIVIDAUL NA VALUES AT ANY GIVEN INTERVAL WILL BE REPLACED WITH THE MEAN OF THE STEPS TAKEN BY INTERVAL 
+SEQUENCING THROUGH THE MEAN STEP PER INERVAL (MSPI) AS THE OUTTER LOOP, SEQUENCING THROUGH THE SOURCE DATA
+IF THE STEPS VALUE IN THE SOURCE DATA CONTAINS AN NA VALUE AND THE INTERVAL IN THE SOURCE EQUALS THE MSPI, THEN THE STEP VALUE IN THE SOURCE TABLE WILL RECEIVE THE VALUE FROM THE MSPI TABLE
++ CREATE HISTOGRAM OF THE TOTAL NUMBER OF STEPS TAKEN EACH DAY, AFTER MISSING VALUES ARE IMPUTED WHERE THERE WAS A NA VALUE.  
+
+```{r NUMBER OF MISSING VALUES, echo=TRUE}
+knitr::opts_chunk$set(cache=TRUE)
+# REQUIREMENT 6: REPLACE MISSING VALUES (NA) mean
+Act_3<-Act
+
+for(Mi in seq_along(MSPI$Interval)){
+        
+        for(Ii in seq_along(Act_3$interval)){
+                
+                if(is.na(Act_3$steps[Ii]) & (Act_3$interval[Ii] == MSPI$Interval[Mi])){
+                        Act_3$steps[Ii] <- MSPI$MSPI[Mi]
+                }}}
+
+MSPI_Sub <- aggregate(steps ~ date, Act_3, sum)
+MSPI_Sub$date <- as.Date(MSPI_Sub$date, format = "%Y-%m-%d")
+
+SPD_Mean_Sub<-mean(MSPI_Sub$steps)
+SPD_Median_Sub<-median(MSPI_Sub$steps)
+```
+
+THE MEAN WITH NA's VALUES REMOVED: `r sprintf("%.9f", SPD_Mean)` 
+
+THE MEAN WITH NA's VALUES SUBSTITUTED WITH MEAN: `r sprintf("%.9f", SPD_Mean_Sub)`
+
+THE DIFFERENCE BETWEEN THE TWO MEANS (WITH NA's VALUES REMOVED MINUS NA's VALUES SUBSTITUTED WITH MEAN): `r sprintf("%.9f", (SPD_Mean-SPD_Mean_Sub))`
+
+THE MEDIAN WITH NA's VALUES REMOVED: `r sprintf("%.9f", SPD_Median)`
+
+THE MEDIAN WITH NA's VALUES SUBSTITUTED WITH MEAN: `r sprintf("%.9f", SPD_Median_Sub)`
+
+THE DIFFERENCE BETWEEN THE TWO MEDIANS WITH NA's VALUES REMOVED MINUS NA's VALUES SUBSTITUTED WITH MEAN: `r sprintf("%.9f", (SPD_Median-SPD_Median_Sub))`
+
+AS EXPECTED, SUBSTITUTING THE MEAN WITH NA VALUES DID NOT CHANGE THE DATASET, AS WAS WITNESSED BY THE DIFFERENCE OF THE TWO MEAN'S WERE `r sprintf("%.9f", (SPD_Mean-SPD_Mean_Sub))` AND THE OVERALL SHAPE OF THE DISTRIBUTION WAS ESSENTIALLY UNCHANGED.
+
+#### ------------------------------- PLOTTING MEAN IN PLACE OF NA VALUES ----------------------------------------
+```{r PLOT AVG STEPS TAKEN PER INTERVAL - MEDAIN IN PLACE OF NA, echo= TRUE}
+# REQUIREMENT 7: PLOT VG STEPS TAKEN PER INTERVAL - MEAN IN PLACE OF NA
+
+ggplot(MSPI_Sub, aes(x=steps)) + 
+        geom_histogram(binwidth=650,colour="red", fill="white") +
+        geom_vline(aes(xintercept=mean(steps, na.rm=T)),color="yellow", linetype="solid", size=1)+
+        geom_vline(aes(xintercept=median(steps, na.rm=T)),color="black", linetype="dashed", size=.5)+
+        ggtitle("Total Steps Per Day \n by Occurance") +
+        xlab("Total Steps per day") + ylab("Occurance")
+
+```
+
+#### -------------------- STEPS TAKEN PER INTERVAL WEEKEND VS WEEKDAY ---------------------
+
+THE STRATEGY TO DETERMINE THE AVERAGE NUMBER OF STEPS PER INTERVAL AND COMPARING WEEKDAY VERSUS WEEKEND IS TO:
+
+- CREATE (MUTATE) A NEW FIELD DOW (Day Of Week) THAT BASED UPON THE DATE WILL TRANSLATE IT TO MON - SUN.
+- CREATE (MUTATE) A NEW FIELD DOW_CAT (Day Of Week Category), WHICH WILL GROUP MON-SUN TO EITHER WEEKDAY (WD) OR WEEKEND(WE), WHICH IS BASED UPON THE CHARACTER VERCTOR WE (WEEKEND).   
+- SEQ_ALONG IS USED TO ITERATE THROUGH THE SOURCE TABLE (ACT_3), THEN 
+- IF-ELSE STATEMENT EVALUATES THE DOW_CAT FOR BEING PART OF THE WE CHARACTER VERCTOR, THEN UPDATES THE DOW_CAT FIELD ACCORDINGLY.
+- GROUP THE PROCESSED SOURCE DATA BY INTERVAL AND DOW_CAT 
+- FINALLY, SUMMARIZE STEPS BASED UPON CALCULATING THE MEAN OF STEPS 
+
+```{r MEAN STEPS PER INTERVAL-WEEKDAY VS WEEKEND, echo= TRUE}
+knitr::opts_chunk$set(cache=TRUE)
+WE <- c("Saturday","Sunday")
+Act_3$date <- as.Date(Act_3$date, format = "%Y-%m-%d")
+Act_3 <- mutate(Act_3, DOW = weekdays(date), DOW_CAT = "")
+
+for(n in seq_along(Act_3$DOW)){
+        
+        if(Act_3$DOW[n] %in% WE){
+                Act_3$DOW_CAT[n] <- c("WE")
+        } else {
+           Act_3$DOW_CAT[n] <- c("WD")
+        }}
+
+Act_3$DOW_CAT <- as.factor(Act_3$DOW_CAT)
+str(Act_3)
+head(Act_3, n=10)
+
+Act_3_Grouped <- group_by(Act_3, interval, DOW_CAT) %>% summarize(mean_steps = mean(steps))
+
+ggplot(data = Act_3_Grouped, aes(x = interval, y = mean_steps, colour = DOW_CAT)) + 
+        geom_line(aes(group = DOW_CAT)) + facet_grid(facets = .~ DOW_CAT) +
+        ggtitle("Mean Steps by Interval by Day of Week Category") + xlab ("Interval") + ylab("Mean of Steps")
+
+```    
+
+FROM THE CHART OF MEAN STEPS BY INTERVAL, BY DOW CATEGORY, THE WEEKDAY (WD) VERSUS WEEKEND (WE) CHARTS ARE FAIRLY SIMILAR WITH THE DIFFERENCES BEING:
+
+- A LARGE SPIKE IN THE WD DATA TOWARDS THE END OF THE INTERVAL
+- THE MEAN STEPS IN WE DATA IS A LITTLE LARGER FROM INTERVAL ZERO TO THE MIDDLE.
+- IN THE FINAL ANALYSIS, THE MEAN STEPS BY DAY OF WEEK CATEGORY WILL BE SUMMED UP TO DETERMINE WHERE THE LARGEST CONTRIBUTION IS COMING FROM, WD OR WE.
+
+```{r LARGEST CONTRIBUTION, echo=TRUE}
+Act_3_DOW_CAT_SUM_Steps<-group_by(Act_3_Grouped, DOW_CAT) %>% 
+        summarize(SumOfMeanSteps = sum(mean_steps))
+head(Act_3_DOW_CAT_SUM_Steps)
+
+if(Act_3_DOW_CAT_SUM_Steps[1,2]>Act_3_DOW_CAT_SUM_Steps[2,2]){
+        message("In conclusion, the data shows that the weekday data contributes more to the total mean steps that does the weekend data.")
+        }else{
+        message("In conclusion, the data shows that the weekend data contributes more to the total mean steps that does the weekday data.")
+        }
 
 
+```
 
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+#### --------------------------------------- CLOSEOUT PROCESS ------------------------------------------------------------
+```{r RETURN TO ORIGINAL WORKING DIRECTORY, echo=TRUE}
+# RETURN THE ORIGINAL WORKING DIRECTORY VALUE
+setwd(ORG_WD)
+```
