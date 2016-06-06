@@ -46,7 +46,7 @@ library(dplyr)
 library(ggplot2)
 ```
 
-#### --------------------------------------------- FILE READING --------------------------------------------------------------------
+#### FILE READING 
 
 DETERMINE IF FILE (ACTIVITY) HAS BEEN UNZIPED, IF NO THEN UNZIP ELSE DO NOTHING.
 
@@ -71,7 +71,8 @@ NOTICE:
 + THE DATE FIELD IS DEFINE OF CHARACTER TYPE (chr), THIS WILL BE USED WHEN CONVERTED TO DATE USING as.DATE
 + BASED ON THE STARTING NUMBER OF OBSERVATIONS, ALL 17,568 OBSERVATIONS AND THREE VARIABLES (steps, date, & interval) WERE READ INTO MEMORY.
 
-#### ---------------------------------------- STEPS PER DAY -------------------------------------------------------------------------
+####  STEPS PER DAY 
+
 ##### Determine the total steps taken per day:
 ```{r DATA MANUPLITATION, echo=TRUE}
 # REMOVE NA VALUES FROM DATA FRAME.
@@ -97,15 +98,18 @@ colnames(SPD) <- c("Date","Total_Steps_Per_Day")
 head(SPD)
 ```
 
-#### ------------------------------- PLOTTING STEPS PER DAY AND MEAN & MEDIAN ---------------------------------------------
-```{r GGPLOT LIBRARY, echo=TRUE}
+#### PLOTTING STEPS PER DAY AND MEAN & MEDIAN 
+
+```{r plot1, echo=TRUE}
 # REQUIREMENT 2: MAKE HISTOGRAM OF THE TOTAL NUMBER OF STEPS TAKEN EACH DAY. 
+png("plot1.png")
 ggplot(SPD, aes(x=Total_Steps_Per_Day)) + 
         geom_histogram(binwidth=650,colour="red", fill="white") +
         geom_vline(aes(xintercept=mean(Total_Steps_Per_Day, na.rm=T)),color="yellow", linetype="solid", size=1)+
         geom_vline(aes(xintercept=median(Total_Steps_Per_Day, na.rm=T)),color="black", linetype="dashed", size=.5) +
         ggtitle("Total Steps Per Day \n by Occurance") +
         xlab("Total Steps per day") + ylab("Occurance")
+dev.off()
 
 # REQUIREMENT 3: CALCULATE THE MEAN AND MEDIAN STEPS PER DAY.
 SPD_Mean<-mean(SPD$Total_Steps_Per_Day)
@@ -114,7 +118,8 @@ SPD_Median<-median(SPD$Total_Steps_Per_Day)
 
 The MEAN of the total steps per day is `r sprintf("%.4f",SPD_Mean)` (displayed as solid yellow vertical line on the chart) and the MEDIAN (displayed as dashed black vertical line on the chart) of the total steps per day is `r sprintf("%.2f",SPD_Median)`.
 
-#### ---------------------- AVERAGE NUMBER OF STEPS TAKEN, ACROSS ALL DAYS ------------------------------------
+#### AVERAGE NUMBER OF STEPS TAKEN, ACROSS ALL DAYS 
+
 ```{r AVG STEPS TAKEN PER INTERVAL, echo= TRUE}
 #  BEGINNING WITH ORIGINAL DATASET, Act (Activity Monitoring Dataset), WHICH CONTAINS "NA" IN THE STEPS FIELD.
 Act_2<-Act
@@ -139,19 +144,21 @@ MSPI<-arrange(MSPI,Interval)
 
 ```
 
-#### ------------------ PLOTTING AVG STEPS TAKEN PER INTERVAL, AVG ACROSS ALL DAYS --------------------------
+#### PLOTTING AVG STEPS TAKEN PER INTERVAL, AVG ACROSS ALL DAYS 
+
 ```{r PLOT AVG STEPS TAKEN PER INTERVAL, echo= TRUE}
 # REQUIREMENT 4: TIME SERIES PLOT OF THE AVERAGE NUMBER OF STEPS TAKEN. 
-        
+png("plot2.png")        
 ggplot(MSPI,aes(x=Interval, y=MSPI))+
         geom_line(color="red", size=.1) +  
         theme(panel.background = element_rect(fill = 'grey95'),
         panel.grid.major = element_line(colour = "black", size=.1),
         panel.grid.minor = element_line(colour = "blue")) +
         labs(title="MEAN STEPS TAKEN PER INTERVAL", x="Time Interval (5 Sec)", y="MEAN Number of Steps")
+dev.off()
 ```
 
-#### ----- WHICH 5-MIN INTERVAL, ON AVG ACROSS ALL DAYS, IS THE MAX NUMBERS OF STEPS -----------
+#### WHICH 5-MIN INTERVAL, ON AVG ACROSS ALL DAYS, IS THE MAX NUMBERS OF STEPS -----------
 
 ```{r MAX MEAN STEPS PER INTERVAL, echo=TRUE}
 # REQUIREMENT 5: USING THE FILTER FUNCTION WITHIN THE DPLYR PACKAGE  
@@ -161,7 +168,8 @@ MaxSteps<-(filter(MSPI, MSPI == max(MSPI$MSPI)))
 The average max number of steps taken was `r sprintf("%.2f",MaxSteps$MSPI)`, which was taken at the `r sprintf("%.0f",MaxSteps$Interval)` ^th^ interval (seconds).
 
 
-#### ------------------------- REPLACE THE NA's WITH THE MEDIAN VALUE   --------------------------------------------------------
+#### REPLACE THE NA's WITH THE MEDIAN VALUE  
+
 NOTICE THAT OF THE `r sprintf("%.0f", NROW(Act_2$steps))` OBSERVATIONS, `r sprintf("%.0f", sum(is.na(Act_2$steps)))` HAD "N/A", WHICH EQUATES TO NOT HAVING A VALUE IN THE STEPS VARIABLE.  THE FOLLOWING STATEGY WILL BE TAKEN WHEN REPLACING NA VALUES:
 
 + INDIVIDAUL NA VALUES AT ANY GIVEN INTERVAL WILL BE REPLACED WITH THE MEAN OF THE STEPS TAKEN BY INTERVAL 
@@ -203,20 +211,21 @@ THE DIFFERENCE BETWEEN THE TWO MEDIANS WITH NA's VALUES REMOVED MINUS NA's VALUE
 
 AS EXPECTED, SUBSTITUTING THE MEAN WITH NA VALUES DID NOT CHANGE THE DATASET, AS WAS WITNESSED BY THE DIFFERENCE OF THE TWO MEAN'S WERE `r sprintf("%.9f", (SPD_Mean-SPD_Mean_Sub))` AND THE OVERALL SHAPE OF THE DISTRIBUTION WAS ESSENTIALLY UNCHANGED.
 
-#### ------------------------------- PLOTTING MEAN IN PLACE OF NA VALUES ----------------------------------------
+#### PLOTTING MEAN IN PLACE OF NA VALUES 
 ```{r PLOT AVG STEPS TAKEN PER INTERVAL - MEDAIN IN PLACE OF NA, echo= TRUE}
 # REQUIREMENT 7: PLOT VG STEPS TAKEN PER INTERVAL - MEAN IN PLACE OF NA
-
+png("plot3.png")
 ggplot(MSPI_Sub, aes(x=steps)) + 
         geom_histogram(binwidth=650,colour="red", fill="white") +
         geom_vline(aes(xintercept=mean(steps, na.rm=T)),color="yellow", linetype="solid", size=1)+
         geom_vline(aes(xintercept=median(steps, na.rm=T)),color="black", linetype="dashed", size=.5)+
         ggtitle("Total Steps Per Day \n by Occurance") +
         xlab("Total Steps per day") + ylab("Occurance")
+dev.off()
 
 ```
 
-#### -------------------- STEPS TAKEN PER INTERVAL WEEKEND VS WEEKDAY ---------------------
+#### STEPS TAKEN PER INTERVAL WEEKEND VS WEEKDAY 
 
 THE STRATEGY TO DETERMINE THE AVERAGE NUMBER OF STEPS PER INTERVAL AND COMPARING WEEKDAY VERSUS WEEKEND IS TO:
 
@@ -246,11 +255,11 @@ str(Act_3)
 head(Act_3, n=10)
 
 Act_3_Grouped <- group_by(Act_3, interval, DOW_CAT) %>% summarize(mean_steps = mean(steps))
-
+png("plot4.png")
 ggplot(data = Act_3_Grouped, aes(x = interval, y = mean_steps, colour = DOW_CAT)) + 
         geom_line(aes(group = DOW_CAT)) + facet_grid(facets = .~ DOW_CAT) +
         ggtitle("Mean Steps by Interval by Day of Week Category") + xlab ("Interval") + ylab("Mean of Steps")
-
+dev.off()
 ```    
 
 FROM THE CHART OF MEAN STEPS BY INTERVAL, BY DOW CATEGORY, THE WEEKDAY (WD) VERSUS WEEKEND (WE) CHARTS ARE FAIRLY SIMILAR WITH THE DIFFERENCES BEING:
@@ -273,7 +282,7 @@ if(Act_3_DOW_CAT_SUM_Steps[1,2]>Act_3_DOW_CAT_SUM_Steps[2,2]){
 
 ```
 
-#### --------------------------------------- CLOSEOUT PROCESS ------------------------------------------------------------
+#### CLOSEOUT PROCESS 
 ```{r RETURN TO ORIGINAL WORKING DIRECTORY, echo=TRUE}
 # RETURN THE ORIGINAL WORKING DIRECTORY VALUE
 setwd(ORG_WD)
